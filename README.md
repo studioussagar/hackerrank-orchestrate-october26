@@ -81,7 +81,27 @@ Deletion Request (case_id, email, audit_at, request_text)
 
 ---
 
-## 2. Repository Layout
+## 2. Dual Version Architecture: Version 1 (Deterministic) and Version 2 (Machine Learning)
+
+The repository provides two complete, runnable implementations of the deletion-audit agent:
+
+### Version 1 (`v1/` and `code/`) — Deterministic Grounded Core
+- **Intent Classification:** Deterministic pattern recognition and keyword/regex multilingual parsing.
+- **Evidence Verification:** Fact-grounded relational queries and snapshot state evaluation.
+- **Run Command:** `python code/main.py` or `python v1/main.py`
+- **Output:** Generates `output.csv`.
+
+### Version 2 (`v2/`) — Machine Learning (ML) Augmented Architecture
+- **Intent Classification:** Local Scikit-Learn NLP pipeline (`word_tfidf` 1-3 + `char_tfidf` 3-5 via `FeatureUnion` + `LogisticRegression`).
+- **Statistical PII Scoring:** Numerical feature vectorization predicting residual PII exposure risk.
+- **100% Offline & Autonomous:** Zero external API calls, zero cloud dependencies, zero token cost ($0.00).
+- **Run Command:** `python v2/main.py --output output_v2.csv`
+- **Evaluation Command:** `python v2/evaluation/main.py`
+- **Documentation:** See [`v2/README.md`](./v2/README.md) for complete mathematical and pipeline details.
+
+---
+
+## 3. Repository Layout
 
 ```text
 ├── AGENTS.md                              # Authoritative coding agent operating contract
@@ -89,39 +109,32 @@ Deletion Request (case_id, email, audit_at, request_text)
 ├── README.md                              # This document: setup & approach overview
 ├── log.txt                                # Root append-only session and turn log
 ├── output.csv                             # Final generated output (518 evaluation rows)
+├── output_v2.csv                          # Version 2 ML-generated output (518 evaluation rows)
 ├── pytest.ini                             # Pytest configuration
 ├── .gitignore                             # Git exclusion rules
-├── code/
-│   ├── __init__.py                        # Code package initializer
-│   ├── classifier.py                      # Request intent classification module
-│   ├── engine.py                          # Core audit decision engine
+├── code/ (v1)                             # Version 1: Deterministic Grounded Solution
+├── v1/                                    # Version 1 archive
+├── v2/                                    # Version 2: Local Machine Learning (Scikit-Learn) Solution
+│   ├── ml_classifier.py                   # Multilingual TF-IDF + LogisticRegression NLP model
+│   ├── ml_evidence.py                     # Statistical PII exposure and risk estimator
+│   ├── ml_engine.py                       # ML-augmented audit decision engine
 │   ├── evidence_loader.py                 # Multi-format evidence parser and indexer
 │   ├── identity.py                        # Identity graph resolver
-│   ├── main.py                            # Main CLI pipeline entry point
-│   ├── policy.py                          # Deletion rules, operations, and state enums
-│   ├── serializer.py                      # Canonical step sorting & CSV serialization
+│   ├── policy.py                          # Deletion policy matrix & enums
+│   ├── serializer.py                      # Canonical step sorting & serialization
+│   ├── main.py                            # Version 2 CLI entry point
+│   ├── README.md                          # Version 2 ML architecture guide
 │   └── evaluation/
-│       ├── __init__.py                    # Evaluation package initializer
-│       ├── main.py                        # Evaluation harness
-│       ├── evaluation_report.md           # Benchmark accuracy & synthetic cases report
-│       └── usage_report.md                # Model calls, token counts, and cost breakdown
-├── dataset/
-│   ├── deletion_requests.csv              # 518 evaluation requests
-│   ├── sample_deletion_requests.csv       # 32 sample requests
-│   ├── sample_output.csv                  # Reference answers for 32 samples
-│   ├── user_identities.csv                # Current user identity snapshots
-│   ├── user_audit_log.csv                 # Historical identity changes
-│   ├── system_activity.csv                # Global event stream
-│   ├── deletion_rules.csv                 # Data category policy matrix
-│   ├── evidence_files.csv                 # Manifest of supplied evidence files
-│   └── evidence/                          # 94 evidence files (JSON, SQL, logs, txt, PDFs)
-└── tests/
-    └── test_audit_engine.py               # Unit, integration, and invariant tests
+│       ├── main.py                        # ML evaluation suite
+│       ├── evaluation_report.md           # ML benchmark accuracy & synthetic cases report
+│       └── usage_report.md                # ML inference cost ($0.00) & latency metrics
+├── dataset/                               # Evaluation data and evidence files
+└── tests/                                 # Automated unit and integration tests
 ```
 
 ---
 
-## 3. Setup and Installation
+## 4. Setup and Installation
 
 ### Prerequisites
 - Python 3.10, 3.11, or 3.12 (tested on Python 3.12.6 AMD64)
@@ -145,34 +158,35 @@ python -m venv .venv
 source .venv/bin/activate
 
 # Install required dependencies
-pip install pandas pytest pypdf
+pip install pandas pytest pypdf scikit-learn numpy
 ```
 
 ---
 
-## 4. Running the Solution
+## 5. Running the Solutions
 
-### 1. Execute Full Audit Pipeline (Generates `output.csv`)
-To process all 518 evaluation requests from `dataset/deletion_requests.csv` and write the canonical `output.csv` to the repository root:
-
+### Running Version 1 (Deterministic)
 ```bash
+# Full dataset (518 evaluation requests -> output.csv):
 python code/main.py
-```
 
-*Execution performance:* Completes in ~0.8 to 1.2 seconds (~500+ requests/sec).
-
-### 2. Run Public Sample Benchmark
-To run against `dataset/sample_deletion_requests.csv` and inspect output:
-
-```bash
+# Public sample benchmark (32 sample requests):
 python code/main.py --sample
+
+# Run automated tests:
+pytest tests/
 ```
 
-### 3. Run Automated Tests
-Execute the automated test suite verifying identity resolution, multi-lingual classification, temporal cutoffs, canonical sorting, and invariant rules:
-
+### Running Version 2 (Machine Learning Model)
 ```bash
-pytest tests/
+# Full dataset (518 evaluation requests -> output_v2.csv):
+python v2/main.py --output output_v2.csv
+
+# Public sample benchmark (32 sample requests):
+python v2/main.py --sample
+
+# Run ML evaluation suite and regenerate reports:
+python v2/evaluation/main.py
 ```
 
 ### 4. Run Evaluation Harness & Generate Reports
